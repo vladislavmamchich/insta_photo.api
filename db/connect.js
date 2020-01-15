@@ -11,12 +11,17 @@ const options = {
 	useCreateIndex: true,
 	useUnifiedTopology: true
 }
-const { DB_HOST, DB_PORT, DB_USEDB, DB_USER, DB_PASS } = process.env
+const { DB_HOST, DB_PORT, DB_USEDB, DB_USER, DB_PASS, NODE_ENV } = process.env
 
-mongoose.connect(
-	`mongodb://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_USEDB}`,
-	options
-)
+if (NODE_ENV === 'production') {
+	mongoose.connect(
+		`mongodb://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_USEDB}`,
+		options
+	)
+} else {
+	mongoose.connect(`mongodb://${DB_HOST}:${DB_PORT}/${DB_USEDB}`, options)
+}
+
 const db = mongoose.connection
 
 db.on('error', function(err) {

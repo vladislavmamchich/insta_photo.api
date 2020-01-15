@@ -15,6 +15,5 @@
 __designs
 package-lock.json
 yarn.lock
-/public/videos
-/public/files
+/public
 test.js

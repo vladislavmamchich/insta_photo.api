@@ -23,5 +23,8 @@
     "salted-md5": "^4.0.2",
     "secure-random-password": "^0.2.1",
     "svg-captcha": "^1.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.2"
   }
 }
