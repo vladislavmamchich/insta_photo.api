@@ -3,27 +3,20 @@ const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
 const cyrillicToTranslit = require('cyrillic-to-translit-js')
+const { INVALID_EXTENSIONS, FILE_LIMITS } = require('../config/server')
 
-const { SECRET } = process.env
+const { JWT_SECRET } = process.env
 
-const { createDir } = require('../utils/helpers')
-
-const invalidExtensions = ['.exe', '.dmg', '.bat', '.js', '.sh']
-const limits = {
-	fieldSize: 1000 * 1024 * 1024, // Максимальный размер значения поля
-	fieldNameSize: 100, // Максимальный размер имени файла
-	fields: 9, // Максимальное количество не-файловых полей
-	fileSize: 1000 * 1024 * 1024, // Максимальный размер файла в байтах для multipart-форм
-	files: 1, // Максимальное количество полей с файлами для multipart-форм
-	parts: 10, // Максимальное количество полей с файлами для multipart-форм (поля плюс файлы)
-	headerPairs: 2000 // Максимальное количество пар ключ-значение key=>value для multipart-форм, которое обрабатывается
-}
+const { createDir, secureRandom } = require('../utils/helpers')
 
 const storage = multer.diskStorage({
 	destination: async (req, file, cb) => {
 		try {
-			let { _id } = await jwt.verify(req.token, SECRET)
-			let filePath = `./public/files/${_id}`
+			// const { _id } = await jwt.verify(req.token, JWT_SECRET)
+			// const filePath = `./public/${_id}`
+			const filePath = `./public/${
+				new Date().toISOString().split('T')[0]
+			}`
 			if (!fs.existsSync(filePath)) {
 				await createDir(filePath)
 			}
@@ -42,7 +35,7 @@ const storage = multer.diskStorage({
 
 const fileFilter = async (req, file, cb) => {
 	try {
-		if (invalidExtensions.includes(path.extname(file.originalname))) {
+		if (INVALID_EXTENSIONS.includes(path.extname(file.originalname))) {
 			cb(null, false)
 		} else {
 			cb(null, true)
@@ -54,7 +47,7 @@ const fileFilter = async (req, file, cb) => {
 
 const upload = multer({
 	storage,
-	limits: limits,
+	limits: FILE_LIMITS,
 	fileFilter: (req, file, cb) => fileFilter(req, file, cb)
 })
 

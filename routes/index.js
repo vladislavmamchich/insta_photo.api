@@ -1,9 +1,27 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express')
+const router = express.Router()
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
+const {
+	loginMiddleware,
+	registerMiddleware,
+	resetPasswordMiddleware
+} = require('../middleware/auth')
+const {
+	subscribe,
+	login,
+	checkUniq,
+	register,
+	resetPassword,
+	getCapcha
+} = require('../controllers/auth')
 
-module.exports = router;
+const { upload } = require('../utils/multer')
+
+router.post('/subscribe', subscribe)
+router.post('/login', loginMiddleware, login)
+router.post('/check_uniq', checkUniq)
+router.post('/register', [upload.array('files'), registerMiddleware], register)
+router.post('/reset_password', resetPasswordMiddleware, resetPassword)
+router.get('/captcha', getCapcha)
+
+module.exports = router

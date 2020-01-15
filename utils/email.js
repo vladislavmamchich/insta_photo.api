@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer')
 require('dotenv').config()
 const { EMAIL_USER, EMAIL_PASSWORD } = process.env
 
-const sendEmail = async (email, link) => {
+const sendEmail = async ({ email, text }) => {
 	try {
 		const transporter = nodemailer.createTransport({
 			service: 'gmail',
@@ -12,10 +12,9 @@ const sendEmail = async (email, link) => {
 			}
 		})
 		const mailOptions = {
-			from: 'Universe',
-			subject: 'Restore password'
+			from: 'InstaPhoto',
+			subject: 'Activate account'
 		}
-		let text = 'Для восстановления пароля перейдите по ссылке: ' + link
 		console.log(email, text)
 		await transporter.sendMail({ ...mailOptions, to: email, text })
 	} catch (err) {

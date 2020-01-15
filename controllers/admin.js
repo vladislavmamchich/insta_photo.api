@@ -1,59 +1,22 @@
 const jwt = require('jsonwebtoken')
-const Transaction = require('../db/models/Transaction')
+const User = require('../db/models/User')
 
 require('dotenv').config()
 const { JWT_SECRET } = process.env
 
-const deleteWithdrawRequest = async (req, res) => {
+const getUser = async (req, res) => {
 	try {
 		const {
-			params: { id }
+			body: { user_id },
+			token
 		} = req
-		await Transaction.deleteOne({
-			_id: +id
-		})
-		const txs = await Transaction.find()
-		let addFundsTxs = [],
-			withdrawTxs = []
-		txs.forEach(tx => {
-			if (tx.type === 'withdraw') {
-				withdrawTxs.push(tx)
-			} else {
-				addFundsTxs.push(tx)
-			}
-		})
-		res.render('index', {
-			addFundsTxs,
-			withdrawTxs
-		})
-	} catch (error) {
-		res.render('error', { error })
-	}
-}
-
-const admin = async (req, res) => {
-	try {
-		const { token } = req
-		const txs = await Transaction.find()
-		let addFundsTxs = [],
-			withdrawTxs = []
-		txs.forEach(tx => {
-			if (tx.type === 'withdraw') {
-				withdrawTxs.push(tx)
-			} else {
-				addFundsTxs.push(tx)
-			}
-		})
-		res.render('index', {
-			addFundsTxs,
-			withdrawTxs
-		})
-	} catch (error) {
-		res.render('error', { error })
+		const user = await User.findOne({ _id: user_id }, { password: 0 })
+		res.status(200).json({ user })
+	} catch (err) {
+		res.status(422).json(err)
 	}
 }
 
 module.exports = {
-	admin,
-	deleteWithdrawRequest
+	getUser
 }

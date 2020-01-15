@@ -1,92 +1,31 @@
 const password = require('secure-random-password')
 const fs = require('fs')
-const jo = require('jpeg-autorotate')
+const crypto = require('crypto')
 const { mkdir } = fs.promises
 require('dotenv').config()
 const { SALT } = process.env
 
-const generate_password = (length = 6) => {
-    return password.randomPassword({ length, characters: password.digits })
-}
-
-const generateGroupRoom = (length = 10) => {
+const secureRandom = (length = 10) => {
     return password.randomPassword({
         length,
-        characters: [password.lower, password.upper]
+        characters: [password.lower, password.upper, password.digits]
     })
 }
 
-const generateRandom = (length = 32) => {
-    return password.randomPassword({
-        length,
-        characters: [password.lower, password.upper]
-    })
+const sha256Salt = (data, salt = SALT) => {
+    const hmac = crypto.createHmac('sha256', salt)
+    hmac.update(data)
+    return hmac.digest('hex')
 }
 
-// const isValidJson = (json) => {
-//  try {
-//      JSON.parse(json)
-//      return true
-//  } catch (e) {
-//      return false
-//  }
-// }
-
-const criptMd5 = (info, salt = SALT) => {
-    return require('salted-md5')(info, salt)
+const verifyPassword = (password1, password2) => {
+    return sha256Salt(password1) === password2
 }
-
-const verifyPassword = (password1, password2, salt = SALT) => {
-    return criptMd5(password1, salt) === password2
-}
-
-const errorsObject = {
-    '1': 'Invalid number of arguments',
-    '2': 'Invalid argument(s)',
-    '3': 'Empty argument(s) value(s)'
-}
-
-const isValidObject = (obj, fields) => {
-    try {
-        if (typeof obj === 'string') {
-            if (!isValidJson(obj)) {
-                throw 'Invalid JSON'
-            } else {
-                obj = JSON.parse(obj)
-            }
-        }
-        let emptyArgument = Object.values(obj).some(val => val === '')
-        let keys = Object.keys(obj)
-        let invalidArgument = keys.some(val => !fields.includes(val))
-        let valid = true,
-            msg = null
-
-        if (emptyArgument) {
-            console.log(errorsObject['3'])
-            valid = false
-            msg = errorsObject['3']
-        } else if (keys.length !== fields.length) {
-            console.log(errorsObject['1'])
-            valid = false
-            msg = errorsObject['1']
-        } else if (invalidArgument) {
-            console.log(errorsObject['2'])
-            valid = false
-            msg = errorsObject['2']
-        }
-        return { valid, msg }
-    } catch (err) {
-        console.log(err)
-        throw err
-    }
-}
-
 const getTomorrow = () => {
     let tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     return tomorrow
 }
-
 const createDir = async dirpath => {
     try {
         await mkdir(dirpath, { recursive: true })
@@ -94,7 +33,6 @@ const createDir = async dirpath => {
         if (err.code !== 'EEXIST') throw err
     }
 }
-
 const myLogger = (req, res, next) => {
     // console.log(req)
     const ip =
@@ -140,19 +78,20 @@ const removeFolder = dirPath => {
         console.log('done')
     })
 }
+const getImageUrl = path => {
+    return path.slice(path.indexOf('/'))
+}
 
 module.exports = {
-    generate_password,
-    criptMd5,
+    sha256Salt,
     verifyPassword,
     getTomorrow,
     createDir,
     myLogger,
     isNumeric,
-    isValidObject,
-    generateGroupRoom,
     getUniq,
     rotateImage,
     removeFolder,
-    generateRandom
+    secureRandom,
+    getImageUrl
 }

@@ -1,9 +1,20 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express')
+const router = express.Router()
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
-});
+const {
+	getAllUsers,
+	getUsersFromPage,
+	profileActivation,
+	rotateImage,
+	changeMainPhoto,
+	deleteImage
+} = require('../controllers/users')
 
-module.exports = router;
+router.get('/', getAllUsers)
+router.post('/from_page', getUsersFromPage)
+router.patch('/activation', profileActivation)
+router.patch('/rotate_image', rotateImage)
+router.patch('/change_main_photo', changeMainPhoto)
+router.delete('/delete_image', deleteImage)
+
+module.exports = router

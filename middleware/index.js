@@ -5,8 +5,10 @@ let { JWT_SECRET } = process.env
 
 const verifyToken = async (req, res, next) => {
     try {
-        const bearerToken = req.headers['authorization']
-        if (bearerToken) {
+        const bearerHeader = req.headers['authorization']
+        if (bearerHeader) {
+            const bearer = bearerHeader.split(' ')
+            const bearerToken = bearer[1]
             await jwt.verify(bearerToken, JWT_SECRET)
             req.token = bearerToken
             next()
