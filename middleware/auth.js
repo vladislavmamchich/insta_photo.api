@@ -5,7 +5,7 @@ const {
     isValidPassword,
     isValidSecretWord
 } = require('../utils/validator')
-const { sha256Salt, getImageUrl } = require('../utils/helpers')
+const { sha256Salt, getImageUrl, isNumeric } = require('../utils/helpers')
 const User = require('../db/models/User')
 const Captcha = require('../db/models/Captcha')
 
@@ -106,6 +106,7 @@ const registerMiddleware = async (req, res, next) => {
             if (isExist) {
                 throw { msg: 'User with this email already exist' }
             }
+            delete req.body.data.nickname
         } else {
             if (!isValidNickname(nickname)) {
                 throw { msg: 'Invalid nickname' }
@@ -114,6 +115,7 @@ const registerMiddleware = async (req, res, next) => {
             if (isExist) {
                 throw { msg: 'User with this nickname already exist' }
             }
+            delete req.body.data.email
         }
         if (!isValidPassword(password)) {
             throw { msg: 'Invalid password' }
@@ -124,19 +126,19 @@ const registerMiddleware = async (req, res, next) => {
         if (age < 16 || age > 90) {
             throw { msg: 'Invalid age' }
         }
-        if (!height) {
+        if (!height || !isNumeric(height)) {
             throw { msg: 'Invalid height' }
         }
-        if (!weight) {
+        if (!weight || !isNumeric(weight)) {
             throw { msg: 'Invalid weight' }
         }
-        if (!chest) {
+        if (!chest || !isNumeric(chest)) {
             throw { msg: 'Invalid chest' }
         }
-        if (!waist) {
+        if (!waist || !isNumeric(waist)) {
             throw { msg: 'Invalid waist' }
         }
-        if (!thighs) {
+        if (!thighs || !isNumeric(thighs)) {
             throw { msg: 'Invalid thighs' }
         }
         if (!country) {

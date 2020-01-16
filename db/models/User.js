@@ -13,9 +13,10 @@ const UserSchema = new Schema(
             type: String,
             lowercase: true,
             default: '',
-            validate: isValidEmail
+            validate: isValidEmail,
+            unique: true
         },
-        nickname: { type: String, default: '' },
+        nickname: { type: String, unique: true, default: '' },
         share_email: { type: Boolean, default: false },
         secret_word: { type: String, default: '' },
         is_active: { type: Boolean, default: true },

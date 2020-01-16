@@ -105,13 +105,13 @@ const resetPassword = async (req, res) => {
 			body: { email, secret_word }
 		} = req
 		const password = secureRandom(10)
+		await sendEmail({ email, text: `Your new password ${password}` })
 		await User.updateOne(
 			{ email },
 			{ $set: { password: sha256Salt(password) } }
 		)
-		await sendEmail({ email, text: `Your new password ${password}` })
 		res.status(200).json({
-			msg: 'Registration successfully'
+			msg: 'Password reseted successfully'
 		})
 	} catch (err) {
 		res.status(422).json(err)

@@ -33,21 +33,18 @@ const getUsersFromPage = async (req, res) => {
         res.status(422).json(err)
     }
 }
-const profileActivation = async (req, res) => {
+const profileModeration = async (req, res) => {
     try {
         const {
             token,
-            body: { user_id, is_active }
+            body: { user_id, moderated }
         } = req
         const { email } = await User.findById(user_id)
-        await User.updateOne(
-            { _id: user_id },
-            { $set: { is_active, moderated: true } }
-        )
-        if (is_active && email) {
-            sendEmail({ email, text: `Your account activated` })
+        await User.updateOne({ _id: user_id }, { $set: { moderated } })
+        if (moderated && email) {
+            sendEmail({ email, text: `Your account moterated` })
         }
-        res.status(200).json(result)
+        res.status(200).json({ msg: 'Success' })
     } catch (err) {
         res.status(422).json(err)
     }
@@ -107,7 +104,7 @@ const deleteImage = async (req, res) => {
 module.exports = {
     getAllUsers,
     getUsersFromPage,
-    profileActivation,
+    profileModeration,
     rotateImage,
     changeMainPhoto,
     deleteImage

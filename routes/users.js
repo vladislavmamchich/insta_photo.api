@@ -4,7 +4,7 @@ const router = express.Router()
 const {
 	getAllUsers,
 	getUsersFromPage,
-	profileActivation,
+	profileModeration,
 	rotateImage,
 	changeMainPhoto,
 	deleteImage
@@ -12,7 +12,7 @@ const {
 
 router.get('/', getAllUsers)
 router.post('/from_page', getUsersFromPage)
-router.patch('/activation', profileActivation)
+router.patch('/moderate', profileModeration)
 router.patch('/rotate_image', rotateImage)
 router.patch('/change_main_photo', changeMainPhoto)
 router.delete('/delete_image', deleteImage)
