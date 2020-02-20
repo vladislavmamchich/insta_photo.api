@@ -9,7 +9,8 @@ const Server = {
 		parts: 10, // Максимальное количество полей с файлами для multipart-форм (поля плюс файлы)
 		headerPairs: 2000 // Максимальное количество пар ключ-значение key=>value для multipart-форм, которое обрабатывается
 	},
-	INVALID_EXTENSIONS: ['.exe', '.dmg', '.bat', '.js', '.sh']
+	INVALID_EXTENSIONS: ['.exe', '.dmg', '.bat', '.js', '.sh'],
+	IMAGES_PER_PAGE: 8
 }
 
 module.exports = Server

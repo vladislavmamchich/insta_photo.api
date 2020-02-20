@@ -29,7 +29,13 @@ const storage = multer.diskStorage({
 		let { originalname } = file
 		let name = path.parse(originalname).name
 		let ext = path.extname(originalname)
-		cb(null, `${cyrillicToTranslit().transform(name, '_')}${ext}`)
+		cb(
+			null,
+			`${cyrillicToTranslit().transform(
+				name,
+				'_'
+			)}_${new Date().getTime()}${ext}`
+		)
 	}
 })
 

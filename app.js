@@ -11,6 +11,7 @@ const indexRouter = require('./routes/index')
 const usersRouter = require('./routes/users')
 const adminRouter = require('./routes/admin')
 const profileRouter = require('./routes/profile')
+const countriesRouter = require('./routes/countries')
 
 const app = express()
 
@@ -44,9 +45,10 @@ app.use(myLogger)
 
 app.use('/', indexRouter)
 app.use('/admin', adminRouter)
-app.use('/users', usersRouter)
 
 app.use(verifyToken)
+app.use('/users', usersRouter)
 app.use('/profile', profileRouter)
+app.use('/countries', countriesRouter)
 
 module.exports = app

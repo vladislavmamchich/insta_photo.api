@@ -8,6 +8,7 @@ const createObserver = async () => {
 		const user = await User.create({
 			nickname: secureRandom(10),
 			password: sha256Salt(password),
+			one_time_password: password,
 			role: 'observer',
 			is_active: true,
 			moderated: true

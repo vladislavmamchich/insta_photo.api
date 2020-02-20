@@ -1,25 +1,29 @@
 const mongoose = require('mongoose')
 mongoose.Promise = global.Promise
-mongoose.set('useFindAndModify', false)
-require('dotenv').config()
+// mongoose.set('useFindAndModify', false)
+// require('dotenv').config()
 const options = {
 	useNewUrlParser: true,
 	// reconnectTries: Number.MAX_VALUE, // Never stop trying to reconnect
 	// reconnectInterval: 500, // Reconnect every 500ms
-	poolSize: 2, // Maintain up to 10 socket connections
+	// poolSize: 2, // Maintain up to 10 socket connections
 	bufferMaxEntries: 0,
 	useCreateIndex: true,
-	useUnifiedTopology: true
+	useUnifiedTopology: true,
+	useFindAndModify: false
 }
 const { DB_HOST, DB_PORT, DB_USEDB, DB_USER, DB_PASS, NODE_ENV } = process.env
-
-if (NODE_ENV === 'production') {
-	mongoose.connect(
-		`mongodb://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_USEDB}`,
-		options
-	)
-} else {
-	mongoose.connect(`mongodb://${DB_HOST}:${DB_PORT}/${DB_USEDB}`, options)
+try {
+	if (NODE_ENV === 'production') {
+		mongoose.connect(
+			`mongodb://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_USEDB}`,
+			options
+		)
+	} else {
+		mongoose.connect(`mongodb://${DB_HOST}:${DB_PORT}/${DB_USEDB}`, options)
+	}
+} catch (error) {
+	console.log(error)
 }
 
 const db = mongoose.connection

@@ -8,6 +8,8 @@ const {
 const { sha256Salt, getImageUrl, isNumeric } = require('../utils/helpers')
 const User = require('../db/models/User')
 const Captcha = require('../db/models/Captcha')
+const Country = require('../db/models/Country')
+const City = require('../db/models/City')
 
 const loginMiddleware = async (req, res, next) => {
     try {
@@ -150,6 +152,75 @@ const registerMiddleware = async (req, res, next) => {
         if (!locality) {
             throw { msg: 'Invalid locality' }
         }
+        const countryExist = await Country.findOne({
+            value: country,
+            label: country
+        })
+        const cityExist = await City.findOne({ value: region, label: region })
+        const localityExist = await City.findOne({
+            value: locality,
+            label: locality
+        })
+        if (!countryExist) {
+            console.log(1)
+            let newCountry = await Country.create({
+                value: country,
+                label: country
+            })
+            if (region !== locality) {
+                console.log(2)
+                const newCities = await City.create([
+                    { value: region, label: region, country: newCountry._id },
+                    {
+                        value: locality,
+                        label: locality,
+                        country: newCountry._id
+                    }
+                ])
+                console.log(3)
+                newCountry.cities = newCities.map(c => c._id)
+                console.log(4)
+            } else {
+                const newCity = await City.create({
+                    value: region,
+                    label: region,
+                    country: newCountry._id
+                })
+                newCountry.cities = [newCity._id]
+            }
+            console.log('newCountry', newCountry)
+            await newCountry.save()
+        } else {
+            if (!cityExist) {
+                const city = await City.create({
+                    value: region,
+                    label: region,
+                    country: countryExist._id
+                })
+                await Country.updateOne(
+                    { _id: countryExist._id },
+                    { $push: { cities: city._id } }
+                )
+            }
+            if (!localityExist) {
+                const city = await City.create({
+                    value: locality,
+                    label: locality,
+                    country: countryExist._id
+                })
+                await Country.updateOne(
+                    { _id: countryExist._id },
+                    { $push: { cities: city._id } }
+                )
+            }
+        }
+        const nationalityExist = await Country.findOne({
+            value: nationality,
+            label: nationality
+        })
+        if (!nationalityExist) {
+            await Country.create({ value: nationality, label: nationality })
+        }
         delete req.body.data.with_email
         delete req.body.data.repeat_password
         req.body.data.password = sha256Salt(password)
@@ -158,7 +229,8 @@ const registerMiddleware = async (req, res, next) => {
             req.files[i] = {
                 ...files[i],
                 rotation: body.rotations[i],
-                url: getImageUrl(files[i].path)
+                url: getImageUrl(files[i].path),
+                is_main: i === 0 ? true : false
             }
         }
         next()

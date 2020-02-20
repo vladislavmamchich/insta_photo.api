@@ -13,11 +13,10 @@ const UserSchema = new Schema(
             type: String,
             lowercase: true,
             default: '',
-            validate: isValidEmail,
-            unique: true
+            validate: isValidEmail
         },
         nickname: { type: String, unique: true, default: '' },
-        share_email: { type: Boolean, default: false },
+        // share_email: { type: Boolean, default: false },
         secret_word: { type: String, default: '' },
         is_active: { type: Boolean, default: true },
         moderated: { type: Boolean, default: false },
@@ -31,6 +30,8 @@ const UserSchema = new Schema(
         age: { type: Number },
         height: { type: Number },
         weight: { type: Number },
+        height_unit: { type: String, enum: ['cm', 'inch'], default: 'cm' },
+        weight_unit: { type: String, enum: ['kg', 'lb'], default: 'kg' },
         chest: { type: Number },
         waist: { type: Number },
         thighs: { type: Number },
@@ -44,6 +45,7 @@ const UserSchema = new Schema(
         password: { type: String },
         one_time_password: { type: String },
         images: [{ type: Number, ref: 'Image' }],
+        favourites: [{ type: Number, ref: 'Image' }],
         main_photo: { type: Number, ref: 'Image' }
     },
     {
@@ -103,10 +105,12 @@ const UserSchema = new Schema(
 // }
 
 UserSchema.pre('findOne', function() {
-    this.populate('images')
+    this.populate('images').populate('main_photo')
+    // .populate('favourites')
 })
 UserSchema.pre('find', function() {
-    this.populate('images')
+    this.populate('images').populate('main_photo')
+    // .populate('favourites')
 })
 UserSchema.post('find', function(doc) {
     doc.password = undefined

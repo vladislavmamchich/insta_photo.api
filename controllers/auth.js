@@ -52,15 +52,15 @@ const getCapcha = async (req, res) => {
 }
 const checkUniq = async (req, res) => {
 	try {
-		const { email, nickname } = req.body
+		const { email, nickname, with_email } = req.body
 		if (!email && !nickname) {
 			res.status(200).json({ uniq: false })
 		} else {
 			let uniq = true
-			if (email) {
+			if (with_email && email) {
 				const user = await User.findOne({ email })
 				if (user) uniq = false
-			} else if (nickname) {
+			} else if (!with_email && nickname) {
 				const user = await User.findOne({ nickname })
 				if (user) uniq = false
 			}
@@ -85,12 +85,16 @@ const register = async (req, res) => {
 				await rotate(image)
 			}
 		}
-		await User.create({
+		const { _id } = await User.create({
 			...data,
 			images,
 			main_photo: images[0],
 			role: 'participant'
 		})
+		await Image.updateMany(
+			{ _id: { $in: images } },
+			{ $set: { user: _id } }
+		)
 		res.status(200).json({
 			msg: 'Registration successfully'
 		})

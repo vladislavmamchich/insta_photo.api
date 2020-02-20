@@ -7,7 +7,9 @@ const {
 	profileModeration,
 	rotateImage,
 	changeMainPhoto,
-	deleteImage
+	deleteImage,
+	getGeneralImagesFromPage,
+	getUser
 } = require('../controllers/users')
 
 router.get('/', getAllUsers)
@@ -16,5 +18,7 @@ router.patch('/moderate', profileModeration)
 router.patch('/rotate_image', rotateImage)
 router.patch('/change_main_photo', changeMainPhoto)
 router.delete('/delete_image', deleteImage)
+router.post('/images', getGeneralImagesFromPage)
+router.get('/:_id', getUser)
 
 module.exports = router
