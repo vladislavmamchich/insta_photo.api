@@ -1,8 +1,13 @@
 const express = require('express')
 const router = express.Router()
 
-const { getUser } = require('../controllers/admin')
+const { adminMdwr, getUserMdwr } = require('../middleware/admin')
 
-router.post('/user', getUser)
+const { getUser, getUsersFromPage } = require('../controllers/admin')
+
+router.use(adminMdwr)
+
+router.post('/users', getUsersFromPage)
+router.post('/user', getUserMdwr, getUser)
 
 module.exports = router

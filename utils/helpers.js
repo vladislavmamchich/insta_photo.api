@@ -2,7 +2,6 @@ const password = require('secure-random-password')
 const fs = require('fs')
 const crypto = require('crypto')
 const { mkdir } = fs.promises
-require('dotenv').config()
 const { SALT } = process.env
 
 const secureRandom = (length = 10) => {
@@ -28,7 +27,9 @@ const getTomorrow = () => {
 }
 const createDir = async dirpath => {
     try {
-        await mkdir(dirpath, { recursive: true })
+        if (!fs.existsSync(dirpath)) {
+            await mkdir(dirpath, { recursive: true })
+        }
     } catch (err) {
         if (err.code !== 'EEXIST') throw err
     }

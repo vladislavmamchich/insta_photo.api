@@ -1,18 +1,31 @@
 const jwt = require('jsonwebtoken')
+const fs = require('fs')
 const User = require('../db/models/User')
 const Image = require('../db/models/Image')
-const { getImageUrl, sha256Salt } = require('../utils/helpers')
-const { rotate } = require('../utils/jimp')
-require('dotenv').config()
-const { JWT_SECRET } = process.env
+const FavouriteImage = require('../db/models/FavouriteImage')
+const { getImageUrl, sha256Salt, secureRandom } = require('../utils/helpers')
+const { rotate } = require('../services/images')
+const { JWT_SECRET, PUBLIC_URL } = process.env
 const { IMAGES_PER_PAGE } = require('../config/server')
+const { getAsyncFromRedis, redisClient } = require('../services/redis/client')
+const { sendEmail } = require('../services/email')
 
 const getProfile = async (req, res) => {
 	try {
 		const { token } = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
-		const profile = await User.findById(_id)
-		res.status(200).json({ profile })
+		const profile = await User.findById(_id).lean()
+		let totalLikes = await getAsyncFromRedis('totalLikes')
+		totalLikes = JSON.parse(totalLikes)
+		res.status(200).json({
+			profile: {
+				...profile,
+				main_photo: {
+					...profile.main_photo,
+					totalLikes: totalLikes[_id]
+				}
+			}
+		})
 	} catch (err) {
 		res.status(422).json(err)
 	}
@@ -24,67 +37,21 @@ const favourites = async (req, res) => {
 			body: { image_id }
 		} = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
-		const profile = await User.findOne({ _id, favourites: image_id })
-		let new_favourites = false
-		if (profile) {
+		const img = await FavouriteImage.findOne({
+			original: image_id,
+			user: _id
+		})
+		if (img) {
+			await FavouriteImage.deleteOne({ _id: img._id })
 			await User.updateOne({ _id }, { $pull: { favourites: image_id } })
-			await Image.updateOne(
-				{ _id: image_id },
-				{ $pull: { favourites: _id } }
-			)
 		} else {
-			await User.updateOne(
-				{ _id, favourites: { $ne: image_id } },
-				{ $push: { favourites: image_id } }
-			)
-			await Image.updateOne(
-				{ _id: image_id, favourites: { $ne: _id } },
-				{ $push: { favourites: _id } }
-			)
-			new_favourites = await Image.findOne({ _id: image_id })
+			await FavouriteImage.create({
+				original: image_id,
+				user: _id
+			})
+			await User.updateOne({ _id }, { $push: { favourites: image_id } })
 		}
-		res.status(200).json({ msg: 'Success', new_favourites })
-	} catch (err) {
-		res.status(422).json(err)
-	}
-}
-const loadImages = async (req, res) => {
-	try {
-		const { token, files } = req
-		const { _id } = await jwt.verify(token, JWT_SECRET)
-		if (files.length) {
-			let img_ids = []
-			for (const file of files) {
-				const {
-					originalname,
-					encoding,
-					mimetype,
-					size,
-					destination,
-					filename,
-					path
-				} = file
-				const imgExist = await Image.findOne({ filename })
-				if (!imgExist) {
-					const img = await Image.create({
-						originalname,
-						encoding,
-						mimetype,
-						size,
-						destination,
-						filename,
-						path,
-						url: getImageUrl(path)
-					})
-					img_ids.push(img._id)
-				}
-			}
-			var updated = await User.updateOne(
-				{ _id },
-				{ $push: { images: { $each: img_ids } } }
-			)
-		}
-		res.status(200).json({ files, updated })
+		res.status(200).json({ msg: 'Success' })
 	} catch (err) {
 		res.status(422).json(err)
 	}
@@ -103,20 +70,45 @@ const changeNickname = async (req, res) => {
 		res.status(422).json(err)
 	}
 }
-const changeEmail = async (req, res) => {
+// const changeEmail = async (req, res) => {
+// 	try {
+// 		const {
+// 			token,
+// 			body: { email }
+// 		} = req
+// 		const { _id } = await jwt.verify(token, JWT_SECRET)
+// 		await User.updateOne({ _id }, { $set: { email } })
+// 		const profile = await User.findById(_id)
+// 		res.status(200).json({ msg: 'Email updated successfully', profile })
+// 	} catch (err) {
+// 		res.status(422).json(err)
+// 	}
+// }
+const emailRequest = async (req, res) => {
 	try {
 		const {
 			token,
 			body: { email }
 		} = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
-		await User.updateOne({ _id }, { $set: { email } })
-		const profile = await User.findById(_id)
-		res.status(200).json({ msg: 'Email updated successfully', profile })
+		const emailToken = secureRandom(16)
+		redisClient.setex(emailToken, 1000 * 60 * 30, email)
+		const link = `${PUBLIC_URL}/profile/?emailToken=${emailToken}`
+		await sendEmail({
+			email,
+			subject: 'Confirm email',
+			text: `Сlick on the link to confirm: ${link}`
+		})
+		res.status(200).json({
+			msg: 'Check your mail and confirm please',
+			link,
+			emailToken
+		})
 	} catch (err) {
 		res.status(422).json(err)
 	}
 }
+
 const changePassword = async (req, res) => {
 	try {
 		const {
@@ -177,18 +169,14 @@ const favouritesFromPage = async (req, res) => {
 		} = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
 		const offset = (page - 1) * IMAGES_PER_PAGE
-		const users = await User.find({ moderated: true, is_active: true })
-		const users_ids = users.map(u => u._id)
-		const images = await Image.paginate(
-			{
-				user: { $in: users_ids },
-				favourites: _id
-			},
+		const images = await FavouriteImage.paginate(
+			{ user: _id },
 			{
 				offset,
-				// sort: '-created_at',
+				sort: '-created_at',
 				limit: IMAGES_PER_PAGE,
-				populate: ['user']
+				populate: ['original'],
+				lean: true
 			}
 		)
 		res.status(200).json({ images })
@@ -234,7 +222,6 @@ const registerParticipant = async (req, res) => {
 					images,
 					main_photo: images[0],
 					moderated: false,
-					role: 'participant',
 					ex_observer: true
 				}
 			}
@@ -249,17 +236,64 @@ const registerParticipant = async (req, res) => {
 		res.status(422).json(err)
 	}
 }
+const uploadImages = async (req, res) => {
+	try {
+		const { files, token } = req
+		const { _id } = await jwt.verify(token, JWT_SECRET)
+		console.log(files, _id)
+		let images = []
+		for (const image of files) {
+			const newImg = await Image.create({ ...image, user: _id })
+			images.push(newImg._id)
+			if (image.rotation !== 0) {
+				await rotate(image)
+			}
+		}
+		await User.updateOne(
+			{ _id },
+			{ $set: { images, main_photo: images[0] } }
+		)
+		res.status(200).json({
+			msg: 'Registration successfully'
+		})
+	} catch (err) {
+		res.status(422).json(err)
+	}
+}
+
+const changeEmail = async (req, res) => {
+	try {
+		const {
+			token,
+			body: { emailToken }
+		} = req
+		console.log(emailToken)
+		const { _id } = await jwt.verify(token, JWT_SECRET)
+		const email = await getAsyncFromRedis(emailToken)
+		if (email) {
+			await User.updateOne({ _id }, { $set: { email } })
+			const profile = await User.findById(_id)
+			res.status(200).json({ msg: 'Email updated successfully', profile })
+			redisClient.del(emailToken)
+		} else {
+			res.status(422).json({ msg: 'Token expired or invalid' })
+		}
+	} catch (err) {
+		res.status(422).json(err)
+	}
+}
 
 module.exports = {
 	getProfile,
-	loadImages,
 	favourites,
 	changeNickname,
-	changeEmail,
 	changePassword,
 	changeSecretWord,
 	allowShareEmail,
 	favouritesFromPage,
 	activation,
-	registerParticipant
+	registerParticipant,
+	uploadImages,
+	emailRequest,
+	changeEmail
 }

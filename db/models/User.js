@@ -15,7 +15,7 @@ const UserSchema = new Schema(
             default: '',
             validate: isValidEmail
         },
-        nickname: { type: String, unique: true, default: '' },
+        nickname: { type: String, default: '' },
         // share_email: { type: Boolean, default: false },
         secret_word: { type: String, default: '' },
         is_active: { type: Boolean, default: true },
@@ -46,7 +46,8 @@ const UserSchema = new Schema(
         one_time_password: { type: String },
         images: [{ type: Number, ref: 'Image' }],
         favourites: [{ type: Number, ref: 'Image' }],
-        main_photo: { type: Number, ref: 'Image' }
+        main_photo: { type: Number, ref: 'Image' },
+        is_admin: { type: Boolean }
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

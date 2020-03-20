@@ -3,56 +3,64 @@ const fs = require('fs')
 const User = require('../db/models/User')
 const Image = require('../db/models/Image')
 const Country = require('../db/models/Country')
-const { rotateClockwise } = require('../utils/jimp')
-const { sendEmail } = require('../utils/email')
-require('dotenv').config()
+const { rotateClockwise } = require('../services/images')
+const { sendEmail } = require('../services/email')
 const { JWT_SECRET } = process.env
 const { IMAGES_PER_PAGE } = require('../config/server')
+const { getAsyncFromRedis } = require('../services/redis/client')
 
-const redis = require('redis')
-const client = redis.createClient(6379)
-const { promisify } = require('util')
-const getAsync = promisify(client.get).bind(client)
-
-const getAllUsers = async (req, res) => {
-    try {
-        const { token } = req
-        const { _id } = await jwt.verify(token, JWT_SECRET)
-        const users = await User.find()
-        res.status(200).json({
-            users
-        })
-    } catch (err) {
-        res.status(422).json(err)
-    }
-}
-const getUsersFromPage = async (req, res) => {
-    try {
-        const {
-            token,
-            body: { page, limit }
-        } = req
-        console.log('token', token)
-        await jwt.verify(token, JWT_SECRET)
-        const users = await User.paginate({}, { page, limit })
-        res.status(200).json(users)
-    } catch (err) {
-        res.status(422).json(err)
-    }
-}
+// const getAllUsers = async (req, res) => {
+//     try {
+//         const { token } = req
+//         const { _id } = await jwt.verify(token, JWT_SECRET)
+//         const users = await User.find()
+//         res.status(200).json({
+//             users
+//         })
+//     } catch (err) {
+//         res.status(422).json(err)
+//     }
+// }
+// const getUsersFromPage = async (req, res) => {
+//     try {
+//         const {
+//             token,
+//             body: { page, limit }
+//         } = req
+//         console.log('token', token)
+//         await jwt.verify(token, JWT_SECRET)
+//         const users = await User.paginate({}, { page, limit })
+//         res.status(200).json(users)
+//     } catch (err) {
+//         res.status(422).json(err)
+//     }
+// }
 const profileModeration = async (req, res) => {
     try {
         const {
             token,
             body: { user_id, moderated }
         } = req
-        await jwt.verify(token, JWT_SECRET)
-        const { email } = await User.findById(user_id)
-        await User.updateOne({ _id: user_id }, { $set: { moderated } })
+        const { _id } = await jwt.verify(token, JWT_SECRET)
+        const { email, ex_observer, role } = await User.findById(user_id)
+        if (moderated && ex_observer && role === 'observer') {
+            await User.updateOne(
+                { _id: user_id },
+                { $set: { moderated, role: 'participant', is_active: true } }
+            )
+        } else {
+            await User.updateOne(
+                { _id: user_id },
+                { $set: { moderated, is_active: true } }
+            )
+        }
         if (moderated && email) {
-            sendEmail({ email, text: `Your account moterated` })
+            sendEmail({ email, text: `Your account moderated:)` })
         }
         res.status(200).json({ msg: 'Success' })
+        req.app.get('update_admin_users')({
+            admin: _id
+        })
     } catch (err) {
         res.status(422).json(err)
     }
@@ -119,12 +127,14 @@ const getGeneralImagesFromPage = async (req, res) => {
         } = req
         const { _id } = await jwt.verify(token, JWT_SECRET)
         const offset = (page - 1) * IMAGES_PER_PAGE
-        const users = await User.find({ moderated: true, is_active: true })
-        const users_ids = users.map(u => u._id)
+        const main_imgs_ids = await User.find({
+            moderated: true,
+            is_active: true
+        }).distinct('main_photo')
         const images = await Image.paginate(
             {
-                is_main: true,
-                $and: [{ user: { $ne: _id } }, { user: { $in: users_ids } }]
+                _id: { $in: main_imgs_ids },
+                user: { $ne: _id }
             },
             {
                 offset,
@@ -134,15 +144,17 @@ const getGeneralImagesFromPage = async (req, res) => {
                 lean: true
             }
         )
-        let totalLikes = await getAsync('totalLikes')
+        // let totalLikes = await getAsyncFromRedis('totalLikes')
+        // totalLikes = JSON.parse(totalLikes)
+        // images.docs = images.docs.map(img => {
+        //     return {
+        //         ...img,
+        //         totalLikes: totalLikes[img.user._id]
+        //     }
+        // })
+        let totalLikes = await getAsyncFromRedis('totalLikes')
         totalLikes = JSON.parse(totalLikes)
-        images.docs = images.docs.map(img => {
-            return {
-                ...img,
-                totalLikes: totalLikes[img.user._id]
-            }
-        })
-        res.status(200).json({ images })
+        res.status(200).json({ images, totalLikes })
     } catch (err) {
         console.log('err', err)
         res.status(422).json(err)
@@ -150,33 +162,27 @@ const getGeneralImagesFromPage = async (req, res) => {
 }
 const likeImage = async ({ user_id, image_id }) => {
     try {
-        let image = await Image.findOne({ _id: image_id })
+        const image = await Image.findOne({ _id: image_id })
         if (user_id !== image.user) {
+            let totalLikes = await getAsyncFromRedis('totalLikes')
+            totalLikes = JSON.parse(totalLikes)
             if (image.likes.includes(user_id)) {
-                image.likes = image.likes.filter(id => id !== user_id)
-                // await Image.updateMany(
-                //     { user: user_id },
-                //     {
-                //         $set: {
-                //             global_likes_count: image.global_likes_count - 1
-                //         }
-                //     },
-                //     { multi: true }
-                // )
+                await Image.updateOne(
+                    { _id: image_id },
+                    { $pull: { likes: user_id } }
+                )
             } else {
-                image.likes = [...image.likes, user_id]
-                // await Image.updateMany(
-                //     { user: user_id },
-                //     {
-                //         $set: {
-                //             global_likes_count: image.global_likes_count + 1
-                //         }
-                //     },
-                //     { multi: true }
-                // )
+                await Image.updateOne(
+                    { _id: image_id },
+                    { $push: { likes: user_id } }
+                )
             }
-            await image.save()
-            return { likedUser: image.user }
+            const images = await Image.find({ user: image.user })
+            totalLikes[image.user] = images.reduce(
+                (sum, cur) => sum + cur.likes.length,
+                0
+            )
+            return { likedUser: image.user, totalLikes }
         } else {
             throw { msg: 'error' }
         }
@@ -199,8 +205,8 @@ const getUser = async (req, res) => {
 }
 
 module.exports = {
-    getAllUsers,
-    getUsersFromPage,
+    // getAllUsers,
+    // getUsersFromPage,
     profileModeration,
     rotateImage,
     changeMainPhoto,

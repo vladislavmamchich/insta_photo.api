@@ -1,15 +1,20 @@
 const jwt = require('jsonwebtoken')
+const fs = require('fs')
 const svgCaptcha = require('svg-captcha')
 const User = require('../db/models/User')
 const Image = require('../db/models/Image')
 const Captcha = require('../db/models/Captcha')
-const { verifyPassword, sha256Salt, secureRandom } = require('../utils/helpers')
-const { rotate } = require('../utils/jimp')
-const { sendEmail } = require('../utils/email')
-require('dotenv').config()
-const { JWT_SECRET } = process.env
-
-const { createObserver } = require('./db')
+const {
+	verifyPassword,
+	sha256Salt,
+	secureRandom,
+	createDir
+} = require('../utils/helpers')
+const { sendEmail } = require('../services/email')
+const { JWT_SECRET, PUBLIC_URL } = process.env
+const { getAsyncFromRedis, redisClient } = require('../services/redis/client')
+const { createObserver, updateRegisterGeo } = require('./db')
+const { rotate } = require('../services/images')
 
 const subscribe = async (req, res) => {
 	try {
@@ -73,30 +78,17 @@ const checkUniq = async (req, res) => {
 const register = async (req, res) => {
 	try {
 		const {
-			files,
 			body: { data }
 		} = req
-		console.log(files, data)
-		let images = []
-		for (const image of files) {
-			const newImg = await Image.create(image)
-			images.push(newImg._id)
-			if (image.rotation !== 0) {
-				await rotate(image)
-			}
-		}
 		const { _id } = await User.create({
 			...data,
-			images,
-			main_photo: images[0],
 			role: 'participant'
 		})
-		await Image.updateMany(
-			{ _id: { $in: images } },
-			{ $set: { user: _id } }
-		)
+		const access_token = await jwt.sign({ _id }, JWT_SECRET, {
+			expiresIn: '24h'
+		})
 		res.status(200).json({
-			msg: 'Registration successfully'
+			access_token
 		})
 	} catch (err) {
 		res.status(422).json(err)
@@ -123,12 +115,16 @@ const resetPassword = async (req, res) => {
 }
 const login = async (req, res) => {
 	try {
-		const { email, password, remember_me } = req.body
+		const { email, password } = req.body
 		const user = await User.findOne({
 			$or: [{ email }, { nickname: email }]
 		})
 		if (user) {
-			if (user.moderated) {
+			if (user.role === 'participant' && !user.moderated) {
+				res.status(422).json({
+					msg: 'Your account has not moderated'
+				})
+			} else {
 				if (
 					user.password.length > 0 &&
 					password.length > 0 &&
@@ -140,7 +136,7 @@ const login = async (req, res) => {
 						},
 						JWT_SECRET,
 						{
-							expiresIn: remember_me ? '48h' : '24h'
+							expiresIn: '24h'
 						}
 					)
 					res.status(200).json({
@@ -153,28 +149,102 @@ const login = async (req, res) => {
 						msg: 'Wrong password'
 					})
 				}
-			} else {
-				res.status(422).json({
-					msg: 'Your account has not moderated'
-				})
 			}
 		} else {
 			res.status(422).json({
 				msg: 'User with this email/nickname not found'
 			})
 		}
-		// res.json({ user })
 	} catch (err) {
 		res.status(422).json(err)
 		throw err
 	}
 }
-
+const emailRegister = async (req, res) => {
+	try {
+		const {
+			files,
+			body: { data }
+		} = req
+		const emailRegisterToken = secureRandom(16)
+		redisClient.setex(
+			emailRegisterToken,
+			1000 * 60 * 30,
+			JSON.stringify({ data, files })
+		)
+		const link = `${PUBLIC_URL}/login/?emailRegisterToken=${emailRegisterToken}`
+		await sendEmail({
+			email: data.email,
+			subject: 'Confirm email',
+			text: `Сlick on the link to confirm: ${link}`
+		})
+		res.status(200).json({
+			msg: 'Check your mail and confirm please'
+		})
+	} catch (err) {
+		res.status(422).json(err)
+	}
+}
+const emailRegisterConfirm = async (req, res) => {
+	try {
+		const {
+			body: { emailRegisterToken }
+		} = req
+		let userData = await getAsyncFromRedis(emailRegisterToken)
+		if (userData) {
+			const { data, files } = JSON.parse(userData)
+			const { _id } = await User.create({
+				...data,
+				password: sha256Salt(data.password),
+				role: 'participant'
+			})
+			let images = []
+			for (const image of files) {
+				const destination = `${image.destination.slice(
+					0,
+					image.destination.lastIndexOf('/')
+				)}/${_id}`
+				const path = `${destination.slice(2)}/${image.filename}`
+				const url = path.slice(path.indexOf('/'))
+				await createDir(destination)
+				await fs.renameSync(image.path, path)
+				const newImg = await Image.create({
+					...image,
+					user: _id,
+					destination,
+					path,
+					url
+				})
+				images.push(newImg._id)
+				if (image.rotation !== 0) {
+					await rotate(image)
+				}
+			}
+			await User.updateOne(
+				{ _id },
+				{ $set: { images, main_photo: images[0] } }
+			)
+			await updateRegisterGeo({ ...data })
+			res.status(200).json({
+				msg: 'Email confirmed',
+				email: data.email,
+				password: data.password
+			})
+			redisClient.del(emailRegisterToken)
+		} else {
+			res.status(422).json({ msg: 'Token expired or invalid' })
+		}
+	} catch (err) {
+		res.status(422).json(err)
+	}
+}
 module.exports = {
 	subscribe,
 	login,
 	checkUniq,
 	register,
 	resetPassword,
-	getCapcha
+	getCapcha,
+	emailRegister,
+	emailRegisterConfirm
 }

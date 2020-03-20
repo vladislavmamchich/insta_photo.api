@@ -1,34 +1,33 @@
 const express = require('express')
 const router = express.Router()
-
+const {
+	nicknameChecks,
+	emailChecks,
+	passwordChecks,
+	registerParticipantMiddleware,
+	uploadImagesMdwr
+} = require('../middleware/profile')
 const {
 	getProfile,
-	loadImages,
 	favourites,
 	changeNickname,
-	changeEmail,
 	changePassword,
 	changeSecretWord,
 	allowShareEmail,
 	favouritesFromPage,
 	activation,
-	registerParticipant
+	registerParticipant,
+	uploadImages,
+	emailRequest,
+	changeEmail
 } = require('../controllers/profile')
-const {
-	nicknameChecks,
-	emailChecks,
-	passwordChecks,
-	registerParticipantMiddleware
-} = require('../middleware/profile')
 
-const { upload } = require('../utils/multer')
+const { upload } = require('../services/filesUploader')
 
 router.get('/', getProfile)
-router.post('/load_images', upload.array('images'), loadImages)
 router.post('/favourites', favourites)
 router.post('/favourites_from_page', favouritesFromPage)
 router.patch('/nickname', nicknameChecks, changeNickname)
-router.patch('/email', emailChecks, changeEmail)
 router.patch('/secret_word', changeSecretWord)
 router.patch('/allow_share_email', allowShareEmail)
 router.patch('/password', passwordChecks, changePassword)
@@ -38,5 +37,12 @@ router.post(
 	[upload.array('files'), registerParticipantMiddleware],
 	registerParticipant
 )
+router.post(
+	'/upload_images',
+	[upload.array('files'), uploadImagesMdwr],
+	uploadImages
+)
+router.post('/email', emailChecks, emailRequest)
+router.patch('/update_email', changeEmail)
 
 module.exports = router

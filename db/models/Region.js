@@ -2,15 +2,15 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 const db = require('../connect')
 const autoIncrement = require('mongoose-auto-increment')
-const deepPopulate = require('mongoose-deep-populate')(mongoose)
 autoIncrement.initialize(db)
 const https = require('https')
 
-const CountrySchema = new Schema(
+const RegionSchema = new Schema(
 	{
 		label: { type: String, unique: true, require: true },
 		value: { type: String, unique: true, require: true },
-		regions: [{ type: Number, ref: 'Region' }]
+		country: { type: Number, ref: 'Country', require: true },
+		cities: [{ type: Number, ref: 'City' }]
 	},
 	{
 		timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -18,13 +18,8 @@ const CountrySchema = new Schema(
 	}
 )
 
-CountrySchema.pre('find', function() {
-	this.populate('regions')
-})
+RegionSchema.plugin(autoIncrement.plugin, 'Region')
 
-CountrySchema.plugin(autoIncrement.plugin, 'Country')
-CountrySchema.plugin(deepPopulate, null)
+const Region = db.model('Region', RegionSchema)
 
-const Country = db.model('Country', CountrySchema)
-
-module.exports = Country
+module.exports = Region

@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer')
 require('dotenv').config()
 const { EMAIL_USER, EMAIL_PASSWORD } = process.env
 
-const sendEmail = async ({ email, text }) => {
+const sendEmail = async ({ email, subject = 'Activate account', text }) => {
 	try {
 		const transporter = nodemailer.createTransport({
 			service: 'gmail',
@@ -13,7 +13,7 @@ const sendEmail = async ({ email, text }) => {
 		})
 		const mailOptions = {
 			from: 'InstaPhoto',
-			subject: 'Activate account'
+			subject
 		}
 		console.log(email, text)
 		await transporter.sendMail({ ...mailOptions, to: email, text })

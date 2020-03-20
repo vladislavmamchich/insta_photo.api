@@ -1,8 +1,8 @@
 const express = require('express')
 const router = express.Router()
 
-const { getCountries } = require('../controllers/countries')
+const { getAll } = require('../controllers/geo')
 
-router.get('/', getCountries)
+router.get('/', getAll)
 
 module.exports = router

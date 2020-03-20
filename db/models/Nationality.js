@@ -5,19 +5,19 @@ const autoIncrement = require('mongoose-auto-increment')
 autoIncrement.initialize(db)
 const https = require('https')
 
-const CitySchema = new Schema(
+const NationalitySchema = new Schema(
 	{
 		label: { type: String, unique: true, require: true },
-		value: { type: String, unique: true, require: true },
-		region: { type: Number, ref: 'Region', require: true }
+		value: { type: String, unique: true, require: true }
 	},
 	{
 		timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 		versionKey: false
 	}
 )
-CitySchema.plugin(autoIncrement.plugin, 'City')
 
-const City = db.model('City', CitySchema)
+NationalitySchema.plugin(autoIncrement.plugin, 'Nationality')
 
-module.exports = City
+const Nationality = db.model('Nationality', NationalitySchema)
+
+module.exports = Nationality
