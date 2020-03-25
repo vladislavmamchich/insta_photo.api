@@ -15,6 +15,7 @@ const { JWT_SECRET, PUBLIC_URL } = process.env
 const { getAsyncFromRedis, redisClient } = require('../services/redis/client')
 const { createObserver, updateRegisterGeo } = require('./db')
 const { rotate } = require('../services/images')
+const { bull } = require('../services/queues/bull')
 
 const subscribe = async (req, res) => {
 	try {
@@ -166,13 +167,25 @@ const emailRegister = async (req, res) => {
 			files,
 			body: { data }
 		} = req
-		const emailRegisterToken = secureRandom(16)
-		redisClient.setex(
-			emailRegisterToken,
-			1000 * 60 * 30,
-			JSON.stringify({ data, files })
-		)
-		const link = `${PUBLIC_URL}/login/?emailRegisterToken=${emailRegisterToken}`
+		const tokenExist = await getAsyncFromRedis(data.email)
+		let link = ''
+		if (tokenExist) {
+			redisClient.setex(
+				tokenExist,
+				1000 * 60 * 30,
+				JSON.stringify({ data, files })
+			)
+			link = `${PUBLIC_URL}/login/?emailRegisterToken=${tokenExist}`
+		} else {
+			const emailRegisterToken = secureRandom(16)
+			redisClient.setex(data.email, 1000 * 60 * 30, emailRegisterToken)
+			redisClient.setex(
+				emailRegisterToken,
+				1000 * 60 * 30,
+				JSON.stringify({ data, files })
+			)
+			link = `${PUBLIC_URL}/login/?emailRegisterToken=${emailRegisterToken}`
+		}
 		await sendEmail({
 			email: data.email,
 			subject: 'Confirm email',
@@ -205,6 +218,7 @@ const emailRegisterConfirm = async (req, res) => {
 					image.destination.lastIndexOf('/')
 				)}/${_id}`
 				const path = `${destination.slice(2)}/${image.filename}`
+				bull.add('compressImages', { files: { path } })
 				const url = path.slice(path.indexOf('/'))
 				await createDir(destination)
 				await fs.renameSync(image.path, path)
@@ -230,6 +244,7 @@ const emailRegisterConfirm = async (req, res) => {
 				email: data.email,
 				password: data.password
 			})
+			redisClient.del(data.email)
 			redisClient.del(emailRegisterToken)
 		} else {
 			res.status(422).json({ msg: 'Token expired or invalid' })

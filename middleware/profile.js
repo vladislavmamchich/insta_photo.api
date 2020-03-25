@@ -3,7 +3,6 @@ const { verifyPassword, getImageUrl, isNumeric } = require('../utils/helpers')
 const { isValidNickname, isValidEmail } = require('../utils/validator')
 const User = require('../db/models/User')
 const Country = require('../db/models/Country')
-const City = require('../db/models/City')
 const Nationality = require('../db/models/Nationality')
 const Region = require('../db/models/Region')
 const { JWT_SECRET } = process.env
@@ -66,7 +65,6 @@ const registerParticipantMiddleware = async (req, res, next) => {
         const {
             country,
             region,
-            locality,
             height,
             weight,
             chest,
@@ -83,7 +81,7 @@ const registerParticipantMiddleware = async (req, res, next) => {
             throw { msg: 'Maximum number of uploaded images - 5' }
         }
         checkData({ data: body.data, checkPassword: false })
-        await updateRegisterGeo({ country, region, locality, nationality })
+        await updateRegisterGeo({ country, region, nationality })
         const l = files.length
         for (let i = 0; i < l; i++) {
             req.files[i] = {

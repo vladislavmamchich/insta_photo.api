@@ -7,9 +7,22 @@ const getAll = async (req, res) => {
 	try {
 		const { token } = req
 		await jwt.verify(token, JWT_SECRET)
-		const countries = await Country.find().deepPopulate('regions')
-		const nationalities = await Nationality.find()
-		res.status(200).json({ countries, nationalities })
+		const countries = await Country.find().populate('regions')
+		const countriesGeonamesIds = await Country.find().distinct('geonameId')
+		const nationalitiesGeonamesIds = await Nationality.find().distinct(
+			'geonameId'
+		)
+		let countriesObj = {}
+		for (const country of countries) {
+			countriesObj[country.geonameId] = country.regions.map(
+				r => r.geonameId
+			)
+		}
+		res.status(200).json({
+			countriesObj,
+			countriesGeonamesIds,
+			nationalitiesGeonamesIds
+		})
 	} catch (err) {
 		res.status(422).json(err)
 	}

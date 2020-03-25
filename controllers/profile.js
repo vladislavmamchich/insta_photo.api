@@ -70,39 +70,30 @@ const changeNickname = async (req, res) => {
 		res.status(422).json(err)
 	}
 }
-// const changeEmail = async (req, res) => {
-// 	try {
-// 		const {
-// 			token,
-// 			body: { email }
-// 		} = req
-// 		const { _id } = await jwt.verify(token, JWT_SECRET)
-// 		await User.updateOne({ _id }, { $set: { email } })
-// 		const profile = await User.findById(_id)
-// 		res.status(200).json({ msg: 'Email updated successfully', profile })
-// 	} catch (err) {
-// 		res.status(422).json(err)
-// 	}
-// }
 const emailRequest = async (req, res) => {
 	try {
 		const {
 			token,
 			body: { email }
 		} = req
-		const { _id } = await jwt.verify(token, JWT_SECRET)
-		const emailToken = secureRandom(16)
-		redisClient.setex(emailToken, 1000 * 60 * 30, email)
-		const link = `${PUBLIC_URL}/profile/?emailToken=${emailToken}`
+		await jwt.verify(token, JWT_SECRET)
+		let link = ''
+		const tokenExist = await getAsyncFromRedis(email)
+		if (tokenExist) {
+			link = `${PUBLIC_URL}/profile/?emailToken=${tokenExist}`
+		} else {
+			const emailToken = secureRandom(16)
+			redisClient.setex(email, 1000 * 60 * 30, emailToken)
+			redisClient.setex(emailToken, 1000 * 60 * 30, email)
+			link = `${PUBLIC_URL}/profile/?emailToken=${emailToken}`
+		}
 		await sendEmail({
 			email,
 			subject: 'Confirm email',
 			text: `Сlick on the link to confirm: ${link}`
 		})
 		res.status(200).json({
-			msg: 'Check your mail and confirm please',
-			link,
-			emailToken
+			msg: 'Check your mail and confirm please'
 		})
 	} catch (err) {
 		res.status(422).json(err)
@@ -275,6 +266,7 @@ const changeEmail = async (req, res) => {
 			const profile = await User.findById(_id)
 			res.status(200).json({ msg: 'Email updated successfully', profile })
 			redisClient.del(emailToken)
+			redisClient.del(email)
 		} else {
 			res.status(422).json({ msg: 'Token expired or invalid' })
 		}

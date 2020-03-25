@@ -32,7 +32,6 @@ const checkData = ({ data, checkPassword = true }) => {
             repeat_password,
             country,
             region,
-            locality,
             height,
             weight,
             chest,
@@ -73,9 +72,6 @@ const checkData = ({ data, checkPassword = true }) => {
         }
         if (!region) {
             throw { msg: 'Invalid region' }
-        }
-        if (!locality) {
-            throw { msg: 'Invalid locality' }
         }
         if (!nationality) {
             throw { msg: 'Invalid nationality' }

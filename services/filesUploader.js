@@ -1,22 +1,15 @@
 const multer = require('multer')
 const path = require('path')
 const jwt = require('jsonwebtoken')
-const cyrillicToTranslit = require('cyrillic-to-translit-js')
+const crypto = require('crypto')
 const { INVALID_EXTENSIONS, FILE_LIMITS } = require('../config/server')
 const { JWT_SECRET } = process.env
-const { createDir, secureRandom } = require('../utils/helpers')
+const { createDir } = require('../utils/helpers')
 
 const generateFilename = (req, file, cb) => {
 	const { originalname } = file
-	const name = path.parse(originalname).name
 	const ext = path.extname(originalname)
-	cb(
-		null,
-		`${cyrillicToTranslit().transform(
-			name,
-			'_'
-		)}_${new Date().getTime()}${ext}`
-	)
+	cb(null, `${crypto.randomBytes(16).toString('hex')}${ext}`)
 }
 const storage = multer.diskStorage({
 	destination: async (req, file, cb) => {

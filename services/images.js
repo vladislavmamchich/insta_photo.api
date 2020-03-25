@@ -64,6 +64,7 @@ const removeExif = filepath => {
 }
 const compressImage = filepath => {
 	try {
+		console.log('compressImage', filepath)
 		const ext = path.extname(filepath)
 		if (ext === '.png') {
 			decreaseQualityPng(filepath)

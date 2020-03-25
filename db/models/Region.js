@@ -3,14 +3,10 @@ const { Schema } = mongoose
 const db = require('../connect')
 const autoIncrement = require('mongoose-auto-increment')
 autoIncrement.initialize(db)
-const https = require('https')
 
 const RegionSchema = new Schema(
 	{
-		label: { type: String, unique: true, require: true },
-		value: { type: String, unique: true, require: true },
-		country: { type: Number, ref: 'Country', require: true },
-		cities: [{ type: Number, ref: 'City' }]
+		geonameId: { type: Number, unique: true, require: true }
 	},
 	{
 		timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

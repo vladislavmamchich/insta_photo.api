@@ -3,7 +3,6 @@ const { verifyPassword, getImageUrl, isNumeric } = require('../utils/helpers')
 const { isValidNickname, isValidEmail } = require('../utils/validator')
 const User = require('../db/models/User')
 const Country = require('../db/models/Country')
-const City = require('../db/models/City')
 const { JWT_SECRET } = process.env
 const validator = require('validator')
 

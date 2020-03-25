@@ -3,6 +3,7 @@ const fs = require('fs')
 const User = require('../db/models/User')
 const Image = require('../db/models/Image')
 const Country = require('../db/models/Country')
+const FavouriteImage = require('../db/models/FavouriteImage')
 const { rotateClockwise } = require('../services/images')
 const { sendEmail } = require('../services/email')
 const { JWT_SECRET } = process.env
@@ -99,21 +100,23 @@ const deleteImage = async (req, res) => {
             body: { user_id, image_id }
         } = req
         await jwt.verify(token, JWT_SECRET)
-        let { images, main_photo } = await User.findOne({ _id: user_id })
+        const { images, main_photo } = await User.findOne({ _id: user_id })
         if (main_photo === image_id) {
-            main_photo = undefined
-        }
-        await User.updateOne(
-            { _id: user_id },
-            { $pull: { images: image_id }, $set: { main_photo } }
-        )
-        res.status(200).json({ msg: 'Deleted successfully' })
-        const { path } = await Image.findById(image_id)
-        try {
-            fs.unlinkSync(path)
-            await Image.deleteOne({ _id: image_id })
-        } catch (err) {
-            throw err
+            res.status(422).json({ msg: 'Нельзя удалить главное фото' })
+        } else {
+            await User.updateOne(
+                { _id: user_id },
+                { $pull: { images: image_id } }
+            )
+            res.status(200).json({ msg: 'Deleted successfully' })
+            const { path } = await Image.findById(image_id)
+            try {
+                fs.unlinkSync(path)
+                await Image.deleteOne({ _id: image_id })
+                await FavouriteImage.deleteMany({ original: image_id })
+            } catch (err) {
+                throw err
+            }
         }
     } catch (err) {
         res.status(422).json(err)
@@ -123,17 +126,31 @@ const getGeneralImagesFromPage = async (req, res) => {
     try {
         const {
             token,
-            body: { page }
+            body: { page, favourites, country, region, nationality, age }
         } = req
         const { _id } = await jwt.verify(token, JWT_SECRET)
-        const offset = (page - 1) * IMAGES_PER_PAGE
-        const main_imgs_ids = await User.find({
+        let query = {
+            country: country || undefined,
+            region: region || undefined,
+            nationality: nationality || undefined,
+            age: age || undefined
+        }
+        query = JSON.parse(JSON.stringify(query))
+        let image_ids = await User.find({
             moderated: true,
-            is_active: true
+            is_active: true,
+            ...query
         }).distinct('main_photo')
+        if (favourites) {
+            const ids = await User.findOne({
+                _id
+            }).distinct('favourites')
+            image_ids = image_ids.filter(id => ids.includes(id))
+        }
+        const offset = (page - 1) * IMAGES_PER_PAGE
         const images = await Image.paginate(
             {
-                _id: { $in: main_imgs_ids },
+                _id: { $in: image_ids },
                 user: { $ne: _id }
             },
             {
@@ -144,14 +161,6 @@ const getGeneralImagesFromPage = async (req, res) => {
                 lean: true
             }
         )
-        // let totalLikes = await getAsyncFromRedis('totalLikes')
-        // totalLikes = JSON.parse(totalLikes)
-        // images.docs = images.docs.map(img => {
-        //     return {
-        //         ...img,
-        //         totalLikes: totalLikes[img.user._id]
-        //     }
-        // })
         let totalLikes = await getAsyncFromRedis('totalLikes')
         totalLikes = JSON.parse(totalLikes)
         res.status(200).json({ images, totalLikes })

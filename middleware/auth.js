@@ -9,7 +9,7 @@ const { sha256Salt, getImageUrl, isNumeric } = require('../utils/helpers')
 const { updateRegisterGeo } = require('../controllers/db')
 const User = require('../db/models/User')
 const Captcha = require('../db/models/Captcha')
-const { checkData } = require('./index')
+const { checkData } = require('./')
 const { bull } = require('../services/queues/bull')
 
 const loginMiddleware = async (req, res, next) => {
