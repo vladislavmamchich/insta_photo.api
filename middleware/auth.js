@@ -76,10 +76,12 @@ const registerMiddleware = async (req, res, next) => {
         if (!isValidNickname(nickname)) {
             throw { msg: 'Invalid nickname' }
         }
+        console.log(123)
         const isExist = await User.findOne({ nickname })
         if (isExist) {
             throw { msg: 'User with this nickname already exist' }
         }
+        console.log(123)
         checkData({ data })
         await updateRegisterGeo(data)
         delete req.body.data.repeat_password

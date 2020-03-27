@@ -59,8 +59,10 @@ UserSchema.pre('find', function() {
     this.populate('images').populate('main_photo')
 })
 UserSchema.post('findOne', function(doc) {
-    delete doc.password
-    return doc
+    if (doc) {
+        delete doc.password
+        return doc
+    }
 })
 UserSchema.post('find', function(result) {
     for (let i = 0; i < result.length; i++) {

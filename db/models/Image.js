@@ -31,26 +31,6 @@ const ImageSchema = new Schema(
     }
 )
 
-// ImageSchema.post('findOne', function(doc) {
-//     delete doc.height
-//     delete doc.weight
-//     delete doc.chest
-//     delete doc.waist
-//     delete doc.thighs
-//     return doc
-// })
-// ImageSchema.post('find', function(result) {
-//     for (let i = 0; i < result.length; i++) {
-//         delete result[i].height
-//         delete result[i].weight
-//         delete result[i].chest
-//         delete result[i].waist
-//         delete result[i].thighs
-//     }
-//     console.log(123)
-//     return result
-// })
-
 ImageSchema.plugin(autoIncrement.plugin, 'Image')
 ImageSchema.plugin(mongoosePaginate)
 
