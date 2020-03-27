@@ -54,15 +54,19 @@ const UserSchema = new Schema(
 
 UserSchema.pre('findOne', function() {
     this.populate('images').populate('main_photo')
-    // .populate('favourites')
 })
 UserSchema.pre('find', function() {
     this.populate('images').populate('main_photo')
-    // .populate('favourites')
 })
-UserSchema.post('find', function(doc) {
-    doc.password = undefined
+UserSchema.post('findOne', function(doc) {
+    delete doc.password
     return doc
+})
+UserSchema.post('find', function(result) {
+    for (let i = 0; i < result.length; i++) {
+        delete result[i].password
+    }
+    return result
 })
 
 UserSchema.plugin(autoIncrement.plugin, 'User')
