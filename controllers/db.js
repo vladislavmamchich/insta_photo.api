@@ -38,15 +38,18 @@ const getUser = async ({ _id, email }) => {
 const updateRegisterGeo = async ({ country, region, nationality }) => {
 	try {
 		const countryExist = await Country.findOne({
-			geonameId: country
+			value: country,
+			label: country
 		})
 		if (countryExist) {
 			const regionExist = await Region.findOne({
-				geonameId: region
+				value: region,
+				label: region
 			})
 			if (!regionExist) {
 				const newRegion = await Region.create({
-					geonameId: region,
+					value: region,
+					label: region,
 					country: countryExist._id
 				})
 				await Country.updateOne(
@@ -59,10 +62,12 @@ const updateRegisterGeo = async ({ country, region, nationality }) => {
 			}
 		} else {
 			const newCountry = await Country.create({
-				geonameId: country
+				value: country,
+				label: country
 			})
 			const newRegion = await Region.create({
-				geonameId: region,
+				value: region,
+				label: region,
 				country: newCountry._id
 			})
 			await Country.updateOne(
@@ -74,10 +79,11 @@ const updateRegisterGeo = async ({ country, region, nationality }) => {
 			)
 		}
 		const nationalityExist = await Nationality.findOne({
-			geonameId: nationality
+			value: nationality,
+			label: nationality
 		})
 		if (!nationalityExist) {
-			await Nationality.create({ geonameId: nationality })
+			await Nationality.create({ value: nationality, label: nationality })
 		}
 	} catch (err) {
 		throw err

@@ -83,6 +83,25 @@ const getImageUrl = path => {
     return path.slice(path.indexOf('/'))
 }
 
+const weightConverter = (value, fromUnit, toUnit) => {
+    if (fromUnit === 'kg' && toUnit === 'lb') {
+        return +(value * 2.2046).toFixed(2)
+    }
+    if (fromUnit === 'lb' && toUnit === 'kg') {
+        return +(value / 2.2046).toFixed(2)
+    }
+    return value
+}
+const heightConverter = (value, fromUnit, toUnit) => {
+    if (fromUnit === 'cm' && toUnit === 'inch') {
+        return +(value / 2.54).toFixed(2)
+    }
+    if (fromUnit === 'inch' && toUnit === 'cm') {
+        return +(value * 2.54).toFixed(2)
+    }
+    return value
+}
+
 module.exports = {
     sha256Salt,
     verifyPassword,
@@ -94,5 +113,7 @@ module.exports = {
     rotateImage,
     removeFolder,
     secureRandom,
-    getImageUrl
+    getImageUrl,
+    weightConverter,
+    heightConverter
 }

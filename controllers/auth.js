@@ -8,7 +8,9 @@ const {
 	verifyPassword,
 	sha256Salt,
 	secureRandom,
-	createDir
+	createDir,
+	weightConverter,
+	heightConverter
 } = require('../utils/helpers')
 const { sendEmail } = require('../services/email')
 const { JWT_SECRET, PUBLIC_URL } = process.env
@@ -227,7 +229,20 @@ const emailRegisterConfirm = async (req, res) => {
 					user: _id,
 					destination,
 					path,
-					url
+					url,
+					height: heightConverter(
+						data.height,
+						data.height_unit,
+						'cm'
+					),
+					weight: weightConverter(
+						data.weight,
+						data.weight_unit,
+						'kg'
+					),
+					chest: heightConverter(data.chest, data.height_unit, 'cm'),
+					waist: heightConverter(data.waist, data.height_unit, 'cm'),
+					thighs: heightConverter(data.thighs, data.height_unit, 'cm')
 				})
 				images.push(newImg._id)
 				if (image.rotation !== 0) {

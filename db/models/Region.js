@@ -6,7 +6,8 @@ autoIncrement.initialize(db)
 
 const RegionSchema = new Schema(
 	{
-		geonameId: { type: Number, unique: true, require: true }
+		label: { type: String, unique: true, require: true },
+		value: { type: String, unique: true, require: true }
 	},
 	{
 		timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

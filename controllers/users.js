@@ -126,7 +126,16 @@ const getGeneralImagesFromPage = async (req, res) => {
     try {
         const {
             token,
-            body: { page, favourites, country, region, nationality, age }
+            body: {
+                page,
+                favourites,
+                country,
+                region,
+                nationality,
+                age,
+                sort,
+                order
+            }
         } = req
         const { _id } = await jwt.verify(token, JWT_SECRET)
         let query = {
@@ -155,7 +164,7 @@ const getGeneralImagesFromPage = async (req, res) => {
             },
             {
                 offset,
-                sort: '-created_at',
+                sort: { [sort]: order },
                 limit: IMAGES_PER_PAGE,
                 populate: ['user'],
                 lean: true

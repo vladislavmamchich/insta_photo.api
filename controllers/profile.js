@@ -3,7 +3,13 @@ const fs = require('fs')
 const User = require('../db/models/User')
 const Image = require('../db/models/Image')
 const FavouriteImage = require('../db/models/FavouriteImage')
-const { getImageUrl, sha256Salt, secureRandom } = require('../utils/helpers')
+const {
+	getImageUrl,
+	sha256Salt,
+	secureRandom,
+	weightConverter,
+	heightConverter
+} = require('../utils/helpers')
 const { rotate } = require('../services/images')
 const { JWT_SECRET, PUBLIC_URL } = process.env
 const { IMAGES_PER_PAGE } = require('../config/server')
@@ -52,6 +58,7 @@ const favourites = async (req, res) => {
 			await User.updateOne({ _id }, { $push: { favourites: image_id } })
 		}
 		res.status(200).json({ msg: 'Success' })
+		req.app.get('load_profile')({ _id })
 	} catch (err) {
 		res.status(422).json(err)
 	}
@@ -196,7 +203,6 @@ const registerParticipant = async (req, res) => {
 			files
 		} = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
-		console.log(files, data)
 		let images = []
 		for (const image of files) {
 			const newImg = await Image.create(image)
@@ -219,7 +225,24 @@ const registerParticipant = async (req, res) => {
 		)
 		await Image.updateMany(
 			{ _id: { $in: images } },
-			{ $set: { user: _id } }
+			{
+				$set: {
+					user: _id,
+					height: heightConverter(
+						data.height,
+						data.height_unit,
+						'cm'
+					),
+					weight: weightConverter(
+						data.weight,
+						data.weight_unit,
+						'kg'
+					),
+					chest: heightConverter(data.chest, data.height_unit, 'cm'),
+					waist: heightConverter(data.waist, data.height_unit, 'cm'),
+					thighs: heightConverter(data.thighs, data.height_unit, 'cm')
+				}
+			}
 		)
 		const profile = await User.findById(_id)
 		res.status(200).json({ msg: 'Success', profile })
@@ -231,10 +254,18 @@ const uploadImages = async (req, res) => {
 	try {
 		const { files, token } = req
 		const { _id } = await jwt.verify(token, JWT_SECRET)
-		console.log(files, _id)
+		const user = await User.findById(_id)
 		let images = []
 		for (const image of files) {
-			const newImg = await Image.create({ ...image, user: _id })
+			const newImg = await Image.create({
+				...image,
+				user: _id,
+				height: heightConverter(user.height, user.height_unit, 'cm'),
+				weight: weightConverter(user.weight, user.weight_unit, 'kg'),
+				chest: heightConverter(user.chest, user.height_unit, 'cm'),
+				waist: heightConverter(user.waist, user.height_unit, 'cm'),
+				thighs: heightConverter(user.thighs, user.height_unit, 'cm')
+			})
 			images.push(newImg._id)
 			if (image.rotation !== 0) {
 				await rotate(image)

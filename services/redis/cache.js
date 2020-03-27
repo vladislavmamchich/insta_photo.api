@@ -9,9 +9,15 @@ const { redisClient } = require('./client')
             let totalLikes = {}
             for (const user_id of users_ids) {
                 const images = await Image.find({ user: user_id })
-                totalLikes[user_id] = images.reduce(
+                const total_likes = images.reduce(
                     (sum, cur) => sum + cur.likes.length,
                     0
+                )
+                totalLikes[user_id] = total_likes
+                await Image.updateMany(
+                    { user: user_id },
+                    { $set: { total_likes } },
+                    { multi: true }
                 )
             }
             redisClient.set('totalLikes', JSON.stringify(totalLikes))

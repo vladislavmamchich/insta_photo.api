@@ -17,15 +17,28 @@ const ImageSchema = new Schema(
         url: { type: String, default: '' },
         rotation: { type: Number, default: 0 },
         user: { type: Number, ref: 'User' },
-        likes: [{ type: Number, ref: 'User' }]
-        // favourites: [{ type: Number, ref: 'User' }]
-        // is_main: { type: Boolean, default: false }
+        likes: [{ type: Number, ref: 'User' }],
+        total_likes: { type: Number, default: 0 },
+        height: { type: Number },
+        weight: { type: Number },
+        chest: { type: Number },
+        waist: { type: Number },
+        thighs: { type: Number }
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
         versionKey: false
     }
 )
+
+ImageSchema.post('find', function(doc) {
+    doc.height = undefined
+    doc.weight = undefined
+    doc.chest = undefined
+    doc.waist = undefined
+    doc.thighs = undefined
+    return doc
+})
 
 ImageSchema.plugin(autoIncrement.plugin, 'Image')
 ImageSchema.plugin(mongoosePaginate)

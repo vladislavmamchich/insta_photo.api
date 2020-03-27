@@ -16,8 +16,11 @@ io.set('transports', ['websocket'])
 const { likeImage } = require('../controllers/users')
 
 app.set('update_admin_users', ({ admin }) => {
-    console.log('update_admin_users', admin)
     io.to(admin).emit('update_admin_users')
+})
+
+app.set('load_profile', ({ _id }) => {
+    io.to(_id).emit('load_profile')
 })
 
 io.use((socket, next) => {

@@ -6,7 +6,8 @@ autoIncrement.initialize(db)
 
 const CountrySchema = new Schema(
 	{
-		geonameId: { type: Number, unique: true, require: true },
+		label: { type: String, unique: true, require: true },
+		value: { type: String, unique: true, require: true },
 		regions: [{ type: Number, ref: 'Region' }]
 	},
 	{
@@ -14,7 +15,9 @@ const CountrySchema = new Schema(
 		versionKey: false
 	}
 )
-
+CountrySchema.pre('find', function() {
+	this.populate('regions')
+})
 CountrySchema.plugin(autoIncrement.plugin, 'Country')
 
 const Country = db.model('Country', CountrySchema)
